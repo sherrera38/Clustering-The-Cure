@@ -1,0 +1,68 @@
+#Pull Primary dataframe from csv
+library(readr)
+thecure_discography <- read_csv("C:/Users/Steve/Google Drive/Blog Post/thecure_discography.csv")
+
+#Pull ratings dataframe from xlsx
+library(readxl)
+ratings <- read_excel("C:/Users/Steve/Google Drive/Blog Post/thecure_discography.xlsx", 
+                      sheet = "rateyourmusic")
+
+#Pull UK Chart Ranking from wikipedia chart dataframe
+library(readxl)
+wikipedia_UK_Chart <- read_excel("C:/Users/Steve/Google Drive/Blog Post/thecure_discography.xlsx", 
+                                 sheet = "wikipedia")
+
+#merge
+correlation_data = merge(thecure_discography,ratings,by = "album_name")
+correlation_data = merge(correlation_data,wikipedia_UK_Chart,by = "album_name")
+
+#Check NA 
+sum(is.na(correlation_data))
+
+#Visually check whether the dataset has missing values
+install.packages("VIM")
+library(VIM)
+aggr(correlation_data)
+
+#Isolate numerical values for correlatin matrix
+correlation_data = correlation_data[-c(1:5,8,9,12,14,22,23,25,29)]
+
+#Check class of each vector
+lapply(correlation_data,class)
+
+#Isolate year from dates
+betterdates = as.Date(correlation_data$album_release_year,"%m/%d/%Y")
+correlation_data$album_release_year = betterdates
+correlation_data$album_release_year = format(correlation_data$album_release_year,"%Y")
+correlation_data$album_release_year = as.numeric(correlation_data$album_release_year)
+
+#Attempt Scaling Data
+correlation_data_scaled = scale(correlation_data)
+
+#Heatmap Scaled
+install.packages("gplots")
+library(gplots)
+heatmap.2(cor(correlation_data_scaled), Rowv = FALSE, Colv = FALSE, dendrogram = "none", 
+          cellnote = round(cor(correlation_data_scaled),2), 
+          notecol = "black", key = FALSE, trace = 'none', margins = c(10,10))
+
+
+#Elbow method
+k.max = 15
+wss <- sapply(1:k.max, 
+              function(k){kmeans(correlation_data, k, nstart=50,iter.max = 15 )$tot.withinss})
+wss
+
+plot(1:k.max, wss,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+
+#Run Kmeans
+clusters = kmeans(correlation_data,centers = 4)
+clusters
+cluster_centers = clusters$centers
+cluster_centers
+
+#Inspect Clusters
+str(clusters)
